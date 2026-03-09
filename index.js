@@ -106,7 +106,7 @@ const vs = []
 let vidx = 0
 const SEG = 20
 
-// ✅ 함수들을 먼저 선언
+// 함수들을 먼저 선언
 const fs = []
 
 function closeRing(s) {
@@ -130,10 +130,42 @@ function mkRing(y, r) {
 }
 
 // 하부 기계 돔
-vs.push({ x:0, y:-0.78, z:0 }); const domeApex = vidx++
-const dome = [mkRing(-0.68,0.08), mkRing(-0.56,0.19), mkRing(-0.44,0.29), mkRing(-0.34,0.35)]
+// vs.push({ x:0, y:-0.78, z:0 }); const domeApex = vidx++
+// const dome = [mkRing(-0.68,0.08), mkRing(-0.56,0.19), mkRing(-0.44,0.29), mkRing(-0.34,0.35)]
+// vs.push({ x:0, y:-0.80, z:0 }); const domeApex = vidx++
+// const dome = [
+//   mkRing(-0.72, 0.06),
+//   mkRing(-0.64, 0.16),
+//   mkRing(-0.54, 0.27),
+//   mkRing(-0.42, 0.36),
+//   mkRing(-0.34, 0.38),
+// ]
+// 평평한 원판
+const RING_Y=-0.18, RING_THICK=0.04, RING_OUTER=0.58, RING_INNER=0.22
+const ringTopOuter=mkRing(RING_Y,         RING_OUTER)
+const ringTopInner=mkRing(RING_Y,         RING_INNER)
+const ringBotOuter=mkRing(RING_Y-RING_THICK, RING_OUTER)
+const ringBotInner=mkRing(RING_Y-RING_THICK, RING_INNER)
+closeRing(ringTopOuter); closeRing(ringTopInner)
+closeRing(ringBotOuter); closeRing(ringBotInner)
+bridgeRings(ringTopOuter, ringBotOuter)   // 바깥 벽
+bridgeRings(ringTopInner, ringBotInner)   // 안쪽 구멍 벽
+bridgeRings(ringTopOuter, ringTopInner)   // 윗면
+bridgeRings(ringBotOuter, ringBotInner)   // 아랫면
+
+// 완벽한 반구 (원판 안쪽 구멍에서 아래로)
+const HC=RING_Y-RING_THICK, HR=0.36
+vs.push({x:0, y:HC-HR, z:0}); const domeApex=vidx++
+const dome=[]
+for(let s=1;s<=9;s++){
+  const phi=(s/9)*(Math.PI/2)
+  dome.push(mkRing(HC-HR*Math.cos(phi), HR*Math.sin(phi)))
+}
+
 // 암석 기반
-const rock = [mkRing(-0.28,0.38), mkRing(-0.20,0.46), mkRing(-0.12,0.54)]
+// const rock = [mkRing(-0.28,0.38), mkRing(-0.20,0.46), mkRing(-0.12,0.54)]
+const rock = [mkRing(-0.12, 0.54)]
+
 // 1층 성벽
 const t1 = [mkRing(-0.12,0.56), mkRing(-0.02,0.54), mkRing(0.08,0.52), mkRing(0.12,0.52)]
 const t1i = [mkRing(0.00,0.44), mkRing(0.08,0.42)]
@@ -152,18 +184,17 @@ const domeInner = [
 ]
 domeInner.forEach(s => closeRing(s))
 // 작은 흰 돔 건물들
-const smallDomes = [
-  { cx:  0.16, cz:  0.06 }, { cx: -0.14, cz:  0.10 },
-  { cx:  0.08, cz: -0.16 }, { cx: -0.10, cz: -0.08 },
-  { cx:  0.20, cz: -0.10 }, { cx: -0.20, cz:  0.04 },
-  { cx:  0.00, cz:  0.18 }, { cx:  0.00, cz: -0.18 },
-]
+const smallDomes = []
+for (let i = 0; i < 9; i++) {
+  const a = (i / 9) * Math.PI * 2
+  smallDomes.push({ cx: 0.26 * Math.cos(a), cz: 0.26 * Math.sin(a) })
+}
 for (const { cx, cz } of smallDomes) {
-  const h = 0.10, r = 0.05, sy = 0.60
-  const db = mkRing(sy, r);       closeRing(db)
+  const h = 0.09, r = 0.04, sy = 0.48   // ← sy: 0.60→0.48 (3층 꼭대기)
+  const db = mkRing(sy, r);          closeRing(db)
   const dt = mkRing(sy + h, r * 0.7); closeRing(dt)
   bridgeRings(db, dt)
-  vs.push({ x: cx, y: sy + h + r * 0.6, z: cz })
+  vs.push({ x: cx, y: sy + h + r * 0.7, z: cz })
   bridgeToPoint(dt, vidx - 1); vidx++
   for (let i = db; i < vidx - 1; i++) { vs[i].x += cx; vs[i].z += cz }
 }
@@ -187,16 +218,28 @@ function bridgeToPoint(s, p) {
 }
 
 // 하부 돔
-dome.forEach(s => closeRing(s))
+// dome.forEach(s => closeRing(s))
+// bridgeToPoint(dome[0], domeApex)
+// for (let i=0;i<dome.length-1;i++) bridgeRings(dome[i], dome[i+1])
+dome.forEach(s=>closeRing(s))
 bridgeToPoint(dome[0], domeApex)
-for (let i=0;i<dome.length-1;i++) bridgeRings(dome[i], dome[i+1])
+for(let i=0;i<dome.length-1;i++) bridgeRings(dome[i],dome[i+1])
+bridgeRings(ringBotInner, dome[dome.length-1])  // 원판 안쪽 ↔ 반구 입구
+
 // 암석 기반
-rock.forEach(s => closeRing(s))
-bridgeRings(dome[3], rock[0])
-for (let i=0;i<rock.length-1;i++) bridgeRings(rock[i], rock[i+1])
+// rock.forEach(s => closeRing(s))
+// bridgeRings(dome[3], rock[0])
+// bridgeRings(dome[4], rock[0])
+// for (let i=0;i<rock.length-1;i++) bridgeRings(rock[i], rock[i+1])
+rock.forEach(s=>closeRing(s))
+bridgeRings(ringTopOuter, rock[0])  // 원판 바깥 ↔ 성벽 시작
+
 // 1층
 t1.forEach(s => closeRing(s)); t1i.forEach(s => closeRing(s))
-bridgeRings(rock[2], t1[0]); bridgeRings(t1i[0],t1i[1])
+// bridgeRings(rock[2], t1[0]);
+bridgeRings(rock[0], t1[0])  // rock이 1개로 줄었으니
+
+bridgeRings(t1i[0],t1i[1])
 for (let i=0;i<t1.length-1;i++) bridgeRings(t1[i],t1[i+1])
 // 2층
 t2.forEach(s => closeRing(s)); t2i.forEach(s => closeRing(s))
